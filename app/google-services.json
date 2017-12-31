@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "477182173026",
+    "firebase_url": "https://awarenessproject-8577d.firebaseio.com",
+    "project_id": "awarenessproject-8577d",
+    "storage_bucket": "awarenessproject-8577d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477182173026:android:d41f17605b4932a6",
+        "android_client_info": {
+          "package_name": "com.unipi.mgiavris.awarenessproject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "477182173026-d55qn54lc389i30rn7hfg8tjldg2832k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unipi.mgiavris.awarenessproject",
+            "certificate_hash": "c8a82e026b55e69170f0622f1264c1dc53551d25"
+          }
+        },
+        {
+          "client_id": "477182173026-v11ehcn57339ref4u889al0gri7pq6tq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdv0muw_5QyHesJQdGLKwwsFXZ9WjxABo"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "477182173026-v11ehcn57339ref4u889al0gri7pq6tq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
