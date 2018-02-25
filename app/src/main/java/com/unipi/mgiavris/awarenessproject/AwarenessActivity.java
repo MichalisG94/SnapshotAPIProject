@@ -196,10 +196,10 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                 WeatherObj weatherObj;
                 PlacesObj placesObj;
                 for(DataSnapshot data1 : dataSnapshot.getChildren()) {
-                    Log.d(TAG, "DATA1 " + data1);
+                    //Log.d(TAG, "DATA1 " + data1);
                     key = data1.getKey();
                     for(DataSnapshot data2 : data1.getChildren()) {
-                        Log.d(TAG, "data2 " + data2);
+                        //Log.d(TAG, "data2 " + data2);
                         timestamp = data2.getKey().substring(0, 10); //Επιλέγεται μονο η ημερομηνια και οχι η ώρα
                         if(timestamp.equals(selectedDate)) { //Προσθέτουμε μόνο τα στοιχεία που ταιριάζουν με την επιλεγμένη ημέρα
                             if (data2.child("headphones").exists()) {

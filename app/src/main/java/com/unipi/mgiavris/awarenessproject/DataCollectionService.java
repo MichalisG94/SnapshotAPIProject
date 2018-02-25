@@ -1,6 +1,5 @@
 package com.unipi.mgiavris.awarenessproject;
 
-import android.annotation.TargetApi;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -63,7 +62,7 @@ public class DataCollectionService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        //Log.d(TAG, "onCreate() " + SystemClock.elapsedRealtime());
+        Log.d(TAG, "onCreate() " + SystemClock.elapsedRealtime());
     }
 
     @Override
@@ -272,6 +271,7 @@ public class DataCollectionService extends Service {
         }
 
     }
+
     private void pushNotification(int notification_icon, String contentText) {
 
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -292,6 +292,7 @@ public class DataCollectionService extends Service {
 
         mNotificationManager.notify(100, mBuilder.build());
     }
+
     //Build GoogleApiClient
     private void buildApiClient() {
         Log.d(TAG, "buildApiClient()");
