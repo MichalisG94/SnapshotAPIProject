@@ -1,5 +1,7 @@
 package com.unipi.mgiavris.awarenessproject;
 
+import android.*;
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -7,24 +9,28 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.awareness.Awareness;
 import com.google.android.gms.awareness.snapshot.DetectedActivityResult;
 import com.google.android.gms.awareness.snapshot.HeadphoneStateResult;
-import com.google.android.gms.awareness.snapshot.LocationResult;
+//import com.google.android.gms.awareness.snapshot.LocationResult;
 import com.google.android.gms.awareness.snapshot.PlacesResult;
 import com.google.android.gms.awareness.snapshot.WeatherResult;
 import com.google.android.gms.awareness.state.HeadphoneState;
@@ -33,31 +39,45 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.PlaceLikelihood;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
+import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 import static com.unipi.mgiavris.awarenessproject.AwarenessActivity.getUID;
 
 public class DataCollectionService extends Service {
-    // ------ ON/OFF SERVICE WHEN GPS IS ENABLED/DISABLED ------ //TODO
     private static final String TAG = "DataCollectionService";
     private DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
     private GoogleApiClient mGoogleApiClient;
     private String weatherCondition = null;
     private String currentActivity = null;
+    private LocationRequest mLocationRequest;
     //private boolean hasWeather = false, hasCondition = false;
-
+    String timestamp = getTimestamp();
 
     @Override
     public void onCreate() {
@@ -72,18 +92,15 @@ public class DataCollectionService extends Service {
         // If GPS is enabled collect data
         if(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             buildApiClient();
-            String timestamp = getTimestamp();
+
             headphoneState(timestamp);
             weatherConditions(timestamp);
-            myLocation(timestamp);
+            //myLocation(timestamp);
+            getMyLocation(timestamp);
             myCurrentActivity(timestamp);
             places(timestamp);
-            /*while(!hasWeather && !hasCondition) { //error fix it
-                Log.d(TAG, "-!-!-!-! inside while");
-                if(weatherCondition.equals("Clear, Cloudy")) {
-                    pushNotification(R.drawable.bicycle, "EISAI AKINHTOS");
-                }
-            }*/
+
+            Log.d(TAG, "AFTER ALL FUNCTIONS CALL");
         }
         stopSelf();
         return START_STICKY;
@@ -146,6 +163,10 @@ public class DataCollectionService extends Service {
                             Log.d(TAG, "headphoneState - FAILURE");
                             databaseReference.child(getUID(getApplicationContext(), "headphoneState()")).child(timestamp).child("headphones").setValue("null");
                         }
+                        //DELETE THIS //TODO
+                        if(!headphoneStateResult.getStatus().isSuccess()) {
+                            Log.d(TAG, " headphonestateresult FAILURE");
+                        }
                     }
                 });
     }
@@ -179,8 +200,15 @@ public class DataCollectionService extends Service {
                                         newString.toString()
                                 );
                                 databaseReference.child(getUID(getApplicationContext(), "weatherConditions()")).child(timestamp).child("weather").setValue(weatherObj); //.child("Weather")
-                                //hasWeather = true;
-                                //weatherCondition = weatherObj.getCondition();
+                                if (weatherObj.condition.equals("Icy") || weatherObj.condition.equals("Snowy")) {
+                                    pushNotification(R.drawable.icy, "Ο δρόμος είναι πιθανόν να γλιστράει!", timestamp);
+                                } else if (weatherObj.condition.equals("Rainy")) {
+                                    pushNotification(R.drawable.rainy, "Ο καιρός είναι βροχερός, καλό θα ήταν να έχεις μαζί σου ομπρέλα!", timestamp);
+                                } else if (weatherObj.condition.equals("Clear")) {
+                                    pushNotification(R.drawable.clearday, "Ο ουρανός φαίνεται καθαρός, απόλαυσε την μέρα!", timestamp);
+                                } else if (weatherObj.condition.equals("Hazy") || weatherObj.condition.equals("Foggy")) {
+                                    pushNotification(R.drawable.fog, "Φαίνεται πως η ορατότητα είναι περιορισμένη, προσοχή!", timestamp);
+                                } //Make if -> switch //TODO
                             } else {
                                 //Handle Failure
                                 Log.d(TAG, "weatherConditions - FAILURE");
@@ -192,6 +220,77 @@ public class DataCollectionService extends Service {
         }
     }
 
+    //Create the Location callback
+    final LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            onLocationChanged(locationResult.getLastLocation(), timestamp);
+            //databaseReference.child(getUID(getApplicationContext(), "myLocation()")).child(timestamp).child("location").setValue(location);//child("location").setValue(latLng);
+
+            //onLocationChanged(locationResult.getLastLocation());
+        }
+    };
+
+    //Get user's location data
+    private void getMyLocation(final String timestamp) {
+        Log.d(TAG, "getMyLocation");
+        // Create the location request to start receiving updates
+        mLocationRequest = LocationRequest.create();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(0);
+        mLocationRequest.setFastestInterval(0);
+
+        // Create LocationSettingsRequest object using location request
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder();
+        builder.addLocationRequest(mLocationRequest);
+        LocationSettingsRequest locationSettingsRequest = builder.build();
+
+        // Check whether location settings are satisfied
+        // https://developers.google.com/android/reference/com/google/android/gms/location/SettingsClient
+        SettingsClient settingsClient = LocationServices.getSettingsClient(this);
+        settingsClient.checkLocationSettings(locationSettingsRequest);
+
+        if(checkPermission()) {
+            Log.d(TAG, "getMyLocation ------ if(checkPermission())");
+            //Request location updates
+            getFusedLocationProviderClient(this).requestLocationUpdates(mLocationRequest, locationCallback,
+                    null);
+            }
+    }
+
+    //Θέλουμε μόλις πάρει τα δεδομένα τοποθεσίας και γίνει εγγραφή στην βάση δεδομένων να σταματήσει το update.
+    public void onLocationChanged(Location location, String timestamp) {
+        databaseReference.child(getUID(getApplicationContext(), "myLocation()")).child(timestamp).child("location").setValue(location);
+
+        //Remove Location updates
+        getFusedLocationProviderClient(this).removeLocationUpdates(locationCallback);
+    }
+/*
+    public void getLastLocation() {
+        // Get last known recent location using new Google Play Services SDK (v11+)
+        FusedLocationProviderClient locationClient = getFusedLocationProviderClient(this);
+        if(checkPermission()) {
+            locationClient.getLastLocation()
+                    .addOnSuccessListener(new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // GPS location can be null if GPS is switched off
+                            if (location != null) {
+                                onLocationChanged(location);
+                            }
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Log.d("MapDemoActivity", "Error trying to get last GPS location");
+                            e.printStackTrace();
+                        }
+                    });
+        }
+    }*/
+
+    /*
     //Get user's current location
     private void myLocation(final String timestamp) {
         if (checkPermission()) { //Εχει εξασφαλιστει οτι η αδεια έχει δωθεί απο την onCreate αλλα ζηταει οπωσδήποτε να γινει ελεγχος και εδω
@@ -214,7 +313,7 @@ public class DataCollectionService extends Service {
                     });
         }
     }
-
+*/
     //Get user's current activity
     private void myCurrentActivity(final String timestamp) {
         if (checkPermission()) {
@@ -272,7 +371,7 @@ public class DataCollectionService extends Service {
 
     }
 
-    private void pushNotification(int notification_icon, String contentText) {
+    private void pushNotification(int notification_icon, String contentText, String timestamp) {
 
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         String channelId = "awarenessID";
@@ -287,10 +386,40 @@ public class DataCollectionService extends Service {
         }
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(notification_icon)
+                .setSound(Settings.System.DEFAULT_NOTIFICATION_URI)
                 .setContentTitle("Προσοχή!")
-                .setContentText("Ο δρόμος μπορεί να είναι επικίνδυνος!");
+                .setContentText(contentText);
 
-        mNotificationManager.notify(100, mBuilder.build());
+        SharedPreferences prefs = getSharedPreferences("notification",MODE_PRIVATE);
+        String oldTimestamp = prefs.getString("notification_timestamp", "00-00-0000 00:00:00"); //s1 h timh poy tha epistrefetai an den yparxei kati apothikeymeno
+
+        //DateTimeFormatter formatter = DateTimeFormat.forPattern("dd-MM-yyyy HH:mm:ss");
+        //DateTime dt = formatter.parseDateTime(string);
+
+        SimpleDateFormat  format = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+        try {
+            Date newDate = format.parse(timestamp);
+            Date oldDate = format.parse(oldTimestamp);
+            long diffDate = newDate.getTime() - oldDate.getTime();
+            long hours = ((diffDate / 1000 /*seconds*/) / 60 /*minutes*/) / 60 /*hours*/;
+            //long diff = date1.getTime() - date2.getTime();
+            //long seconds = diff / 1000;
+            //long minutes = seconds / 60;
+            //long hours = minutes / 60;
+            //long days = hours / 24;
+            Log.d(TAG, "newDate is :  " + newDate.toString() + "\nOldDate is : " + oldDate + "\nDifference is : " + hours + " hours.");
+
+
+            SharedPreferences preferences = getSharedPreferences("notification", MODE_PRIVATE);
+            SharedPreferences.Editor prefsEditor = preferences.edit();
+            prefsEditor.putString("notification_timestamp", timestamp);
+            prefsEditor.commit();
+            if(hours >= 6 ) {
+                mNotificationManager.notify(100, mBuilder.build());
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     //Build GoogleApiClient
@@ -360,7 +489,7 @@ public class DataCollectionService extends Service {
         }
     }
 
-    private String getActivityString(int activity) {
+    private String getActivityString(int activity)  {
         Log.d(TAG, "getActivityString");
         switch (activity) {
             case DetectedActivity.IN_VEHICLE:
@@ -381,6 +510,6 @@ public class DataCollectionService extends Service {
                 return "Unknown Activity";
         }
     }
+
+
 }
-// https://stackoverflow.com/questions/20673620/how-to-trigger-broadcast-receiver-when-gps-is-turn-on-off //todo
-//ΟΤΑΝ ΘΑ ΕΝΕΡΓΟΠΟΙΕΙΤΑΙ ΤΟ GPS ΘΑ ΤΡΕΧΕΙ ΤΟ SERVICE //TODO

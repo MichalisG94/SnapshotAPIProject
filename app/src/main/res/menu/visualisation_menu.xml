@@ -2,6 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/userLocation" android:title="Τοποθεσία" app:showAsAction="never" />
+    <item android:id="@+id/userSpeed" android:title="Ταχύτητα" app:showAsAction="never" />
     <item android:id="@+id/userActivity" android:title="Δραστηριότητα" app:showAsAction="never" />
     <item android:id="@+id/weather" android:title="Καιρός" app:showAsAction="never" />
     <item android:id="@+id/exit" android:title="Έξοδος" app:showAsAction="never" />

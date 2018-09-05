@@ -8,6 +8,7 @@ public class UserDataObj {
     public WeatherObj weather;
     public LatLng latLng;
     public PlacesObj places;
+    public double speed;
 
     public UserDataObj() {}
 
@@ -39,9 +40,11 @@ public class UserDataObj {
         return latLng;
     }
 
-    //ADD PLACES & BEACONS //TODO
+    public double getSpeed() {
+        return speed;
+    }
 
-    public UserDataObj(String userID, String timestamp, String headphones, String userActivity, WeatherObj weather, PlacesObj places, LatLng latLng) {
+    public UserDataObj(String userID, String timestamp, String headphones, String userActivity, WeatherObj weather, PlacesObj places, LatLng latLng, double speed) {
         this.userID = userID;
         this.timestamp = timestamp;
         this.headphones = headphones;
@@ -49,5 +52,6 @@ public class UserDataObj {
         this.weather = weather;
         this.places = places;
         this.latLng = latLng;
+        this.speed = speed;
     }
 }

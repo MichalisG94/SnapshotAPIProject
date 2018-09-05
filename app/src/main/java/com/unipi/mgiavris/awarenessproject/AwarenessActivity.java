@@ -50,24 +50,19 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
 
     private static final String TAG = "AwarenessActivity";
     private static final int REQ_MULTIPLE_PERMISSION = 100;
-    private TextView timestampTxt, headphonesTxt, activityTxt, latTxt, longTxt;
     private DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
     private MarkerOptions markerOptions = new MarkerOptions();
     private ArrayList<UserDataObj> userDatas = new ArrayList<>();
     public String selectedDate;
     private GoogleMap googleMap;
-    private boolean weatherIcons = false, activityIcons = false, locationIcon = true;
+    private boolean weatherIcons = false, activityIcons = false, speedIcons = false, locationIcon = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_awareness);
         Log.d(TAG, "onCreate() activity");
-        //timestampTxt = findViewById(R.id.timestampTxt);
-        //headphonesTxt = findViewById(R.id.headphonesTxt);
-        //activityTxt = findViewById(R.id.activityTxt);
-        //latTxt = findViewById(R.id.latitudeTxt);
-        //longTxt = findViewById(R.id.longitudeTxt);
+
 
         if(!checkPermission()) {
             Log.d(TAG, "if(!checkPermission())");
@@ -161,7 +156,7 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
         Log.d(TAG, "onMapReady()");
         googleMap = mGoogleMap;
         pickDate();
-        //getLatLong(googleMap);
+        //getUserData(googleMap);
     }
 
     private void pickDate() {
@@ -181,12 +176,12 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
         Calendar cal = Calendar.getInstance();
         cal.set(selectedYear, selectedMonth, selectedDay);
         selectedDate = DateFormat.format("dd-MM-yyyy", cal).toString();
-        getLatLong();
+        getUserData();
     }
 
     // Add every user's LatLng point to a list
-    private void getLatLong() {
-        Log.d(TAG, "getLatLong");
+    private void getUserData() {
+        Log.d(TAG, "getUserData");
         userDatas.clear();
         databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -195,56 +190,61 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                 LatLng latLng;
                 WeatherObj weatherObj;
                 PlacesObj placesObj;
+                double speed;
+                String currUserID = getUID(AwarenessActivity.this, "createMultMarkers()");
                 for(DataSnapshot data1 : dataSnapshot.getChildren()) {
                     //Log.d(TAG, "DATA1 " + data1);
                     key = data1.getKey();
-                    for(DataSnapshot data2 : data1.getChildren()) {
-                        //Log.d(TAG, "data2 " + data2);
-                        timestamp = data2.getKey().substring(0, 10); //Επιλέγεται μονο η ημερομηνια και οχι η ώρα
-                        if(timestamp.equals(selectedDate)) { //Προσθέτουμε μόνο τα στοιχεία που ταιριάζουν με την επιλεγμένη ημέρα
-                            if (data2.child("headphones").exists()) {
-                                headphones = data2.child("headphones").getValue().toString();
-                            } else headphones = null;
+                    if(key.equals(currUserID)) {
+                        for (DataSnapshot data2 : data1.getChildren()) {
+                            //Log.d(TAG, "data2 " + data2);
+                            timestamp = data2.getKey().substring(0, 10); //Επιλέγεται μονο η ημερομηνια και οχι η ώρα
+                            if (timestamp.equals(selectedDate)) { //Προσθέτουμε μόνο τα στοιχεία που ταιριάζουν με την επιλεγμένη ημέρα
+                                if (data2.child("headphones").exists()) {
+                                    headphones = data2.child("headphones").getValue().toString();
+                                } else headphones = null;
 
-                            if (data2.child("activity").exists() && !data2.child("activity").getValue().equals("null")) {
-                                activity = data2.child("activity").getValue().toString();
-                            } else activity = null;
+                                if (data2.child("activity").exists() && !data2.child("activity").getValue().equals("null")) {
+                                    activity = data2.child("activity").getValue().toString();
+                                } else activity = null;
 
-                            if (data2.child("location").exists() && !data2.child("location").getValue().equals("null")) {
-                                latLng = new LatLng((double) data2.child("location").child("latitude").getValue(), (double) data2.child("location").child("longitude").getValue());
-                            } else latLng = null;
+                                if (data2.child("location").exists() && !data2.child("location").getValue().equals("null")) {
+                                    latLng = new LatLng((double) data2.child("location").child("latitude").getValue(), (double) data2.child("location").child("longitude").getValue());
+                                } else latLng = null;
 
-                            if (data2.child("weather").exists() && !data2.child("weather").getValue().equals("null")) {
-                                weatherObj = data2.child("weather").getValue(WeatherObj.class);
-                            } else weatherObj = null;
+                                if (data2.child("location").child("speed").exists() && !data2.child("location").getValue().equals("null")) {
+                                    speed = Math.round(3.6 * (Double.parseDouble(data2.child("location").child("speed").getValue().toString())));
+                                } else speed = -1; //-1 means that speed doesn't exist
 
-                            if (data2.child("places").exists() && !data2.child("places").getValue().equals("null")) {
-                                placesObj = data2.child("places").getValue(PlacesObj.class);
-                            } else placesObj = null;
-                            UserDataObj userDataObj = new UserDataObj(key, timestamp, headphones, activity, weatherObj, placesObj, latLng);
-                            userDatas.add(userDataObj);
+                                if (data2.child("weather").exists() && !data2.child("weather").getValue().equals("null")) {
+                                    weatherObj = data2.child("weather").getValue(WeatherObj.class);
+                                } else weatherObj = null;
+
+                                if (data2.child("places").exists() && !data2.child("places").getValue().equals("null")) {
+                                    placesObj = data2.child("places").getValue(PlacesObj.class);
+                                } else placesObj = null;
+                                UserDataObj userDataObj = new UserDataObj(key, timestamp, headphones, activity, weatherObj, placesObj, latLng, speed);
+                                userDatas.add(userDataObj);
+                            }
                         }
                     }
                 }
                 createMultMarkers();
             }
-
             @Override
             public void onCancelled(DatabaseError databaseError) {
 
             }
         });
-
     }
 
     // Create a marker for every point in the list
     private void createMultMarkers() {
         googleMap.clear(); // Clear previous markers
         Log.d(TAG, "createMultMarkers() - LIST SIZE = " + userDatas.size());
-        String currUserID = getUID(AwarenessActivity.this, "createMultMarkers()");
         BitmapDescriptor icon; // = BitmapDescriptorFactory.fromResource(R.drawable.unknown);
         for(int i=0; i< userDatas.size(); i++) {
-            LatLng point = userDatas.get(i).latLng;
+            LatLng point = userDatas.get(i).latLng; //OXI GETWEATHER , GETPLACES ALLA weather sketo apo to userdatas
             if(point != null && userDatas.get(i).userActivity != null && userDatas.get(i).getWeather() != null && userDatas.get(i).getPlaces() != null) { //Θα πρεπει να γινεται ελεγχος οτι το gps ειναι ενεργοποιημενο για να γινεται εγγραφη στην βαση, προς το παρον μενει ετσι //TODO
                 Log.d(TAG, "userDatas.get(i).userActivity ====> " + userDatas.get(i).userActivity);
                 markerOptions.position(point);
@@ -257,23 +257,12 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                     markerOptions.icon(getWeatherIcon(userDatas.get(i).getWeather().condition));
                 if(activityIcons)
                     markerOptions.icon(getActivityIcon(userDatas.get(i).userActivity));
+                if(speedIcons)
+                    markerOptions.icon(getSpeedIcon(userDatas.get(i).speed));
                 googleMap.addMarker(markerOptions);
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 12));
             }
         }
-/*
-        googleMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                timestampTxt.setText("Timestamp : " + marker.getTitle());
-                headphonesTxt.setText(marker.getSnippet());
-                //activityTxt.setText(userDatas.get(finalI).userActivity);
-                latTxt.setText("Lat : " + String.valueOf(marker.getPosition().latitude));
-                longTxt.setText("Long : " + String.valueOf(marker.getPosition().longitude));
-                return false;
-            }
-        });
-*/
         googleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
 
             @Override
@@ -395,6 +384,21 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
         return icon;
     }
 
+    private BitmapDescriptor getSpeedIcon(double userSpeed) {
+        BitmapDescriptor icon;
+        if((0 <= userSpeed) && (userSpeed <= 10) )
+            icon = BitmapDescriptorFactory.fromResource(R.drawable.white_circle);
+        else if(userSpeed <= 50)
+            icon = BitmapDescriptorFactory.fromResource(R.drawable.green_circle);
+        else if(userSpeed <= 100)
+            icon = BitmapDescriptorFactory.fromResource(R.drawable.orange_circle);
+        else if(userSpeed > 100)
+            icon = BitmapDescriptorFactory.fromResource(R.drawable.red_circle);
+        else
+            icon = BitmapDescriptorFactory.fromResource(R.drawable.warning);
+        return icon;
+    }
+
     // Generate a random hue color
     private BitmapDescriptor getRandomIconColor() {
         Random rand = new Random();
@@ -429,7 +433,18 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                 activityIcons = false;
                 locationIcon = true;
                 weatherIcons = false;
-                getLatLong();
+                speedIcons = false;
+                getUserData();
+                return true;
+            }
+        }
+        switch ( item.getItemId() ) {
+            case R.id.userSpeed: {
+                activityIcons = false;
+                locationIcon = false;
+                weatherIcons = false;
+                speedIcons = true;
+                getUserData();
                 return true;
             }
         }
@@ -438,7 +453,8 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                 activityIcons = true;
                 locationIcon = false;
                 weatherIcons = false;
-                getLatLong();
+                speedIcons = false;
+                getUserData();
                 return true;
             }
         }
@@ -447,7 +463,8 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
                 activityIcons = false;
                 locationIcon = false;
                 weatherIcons = true;
-                getLatLong();
+                speedIcons = false;
+                getUserData();
                 return true;
             }
         }
@@ -460,3 +477,5 @@ public class AwarenessActivity extends AppCompatActivity implements OnMapReadyCa
         return super.onOptionsItemSelected(item);
     }
 }
+
+    //int CurrentSpeed = (int)Math.round(3.6 * (location.getSpeed())); convert speed from m/s to km/h //TODO
